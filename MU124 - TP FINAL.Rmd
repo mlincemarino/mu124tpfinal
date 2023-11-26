@@ -1,0 +1,689 @@
+---
+title: "Instrumentos de Análisis Urbano II - Trabajo Práctico Final"
+author: "Matías Lince Marino"
+date: "2023-11-26"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    number_sections: false
+    theme: flatly
+    code_folding: hide
+warning: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+library(dplyr)
+```
+
+```{=html}
+<style>
+.notion-link {
+  display: inline-block;
+  padding: 5px 10px;
+  background-color: #f4f4f4;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  text-decoration: none;
+  color: #333;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.notion-icon {
+  margin-left: 5px;
+}
+</style>
+<hide>
+```
+
+## Introducción
+
+El presente trabajo se presenta como una continuación y profundización de los Trabajos Prácticos 01 y 02, que se puede encontrar en el siguiente enlace: https://github.com/mlincemarino/mu124tp01 y https://github.com/mlincemarino/mu124tp02. 
+
+```{r}
+basemipieza <- read.csv2("01-Data/MIPIEZA_BASE-FINAL-03.csv", encoding = "UTF-8", header = TRUE) #Acá leemos el csv. 
+```
+
+Repasando, y a modo de resumen, en el ejercicio anterior se realizaron las siguientes acciones sobre la base:
+
+- Limpiar la base para seleccionar solo aquellas variables de interés. 
+- Agrupar las observaciones por provincia y convertir los nombres de los códigos para facilitar su interpretación. 
+- Agrupar las observaciones por región y analizar su distribución en torno a los grupos de tratamiento y grupos de control. 
+
+## Pregunta a responder
+
+Siguiendo el análisis realizado en el Trabajo Práctico 01, y con el fin de poder empezar a visualizar geográficamente la información, responderemos a la siguiente pregunta de investigación: **¿existe un balance entre la cantidad de mujeres de la muestra en Mi Pieza y la cantidad de hogares que residen en barrios populares por provincia?** Para responder a esta pregunta, primero realizaremos una exploración de los datos. 
+
+## Desarrollo del ejercicio
+
+### Importación de la nueva base de datos y exploración de los datos 
+
+Para responder a la pregunta, empezaremos por importar la base de datos de barrios populares del Registro Nacional de Barrios Populares. La misma fue descargada del siguiente enlance: https://datosabiertos.desarrollosocial.gob.ar/dataset/registro-nacional-de-barrios-populares el día 17 de septiembre de 2023. 
+
+```{r}
+baserenabap <- read.csv2("01-Data/2022-07-13_renabap_base.csv", encoding = "UTF-8", header = TRUE, sep = ",") #Acá leemos el csv. 
+```
+
+Visualicemos la base. 
+
+```{r}
+library(dplyr)
+library(htmltools)
+library(rmarkdown)
+library(DT)
+```
+
+```{r}
+# Obtenemos índice de la columna "geometry" a los fines de poder filtrarla del datatable porque, debido a su extensión, complejiza la visualización. 
+geometry_index <- which(names(baserenabap) == "geometry")
+
+# Mostrar el datatable excluyendo la columna "geometry"
+datatable(baserenabap[, -geometry_index],
+  options = list(
+    scrollX = TRUE,      # Habilitar scroll horizontal
+    pageLength = 10     # Número de filas por página
+  )
+) %>%
+  formatStyle(
+    names(baserenabap)[-geometry_index],  # Excluir "geometry" del estilo
+    background = 'white',
+    fontWeight = 'bold',
+    style = 'auto',
+    width = '30%',
+    height = 17,
+    fontSize = '12px'
+  )
+```
+Como podemos ver, tenemos 5687 filas y 77 columnas / campos. 
+
+### Selección de variables de interés
+
+En base al trabajo anterior, y considerando que nos importa entender la cantidad de barrios que hay por provincia, haremos un trabajo sobre la base que nos permita quedarnos con las variable que más nos importan. 
+
+```{r}
+baserenabap_sel <- select(baserenabap, c("provincia", "cantidad_viviendas_aproximadas", "cantidad_familias_aproximada", "superficie_m2", "personas_genero_masc", "personas_genero_fem", "personas_genero_otrx"))
+baserenabap_sel <- baserenabap_sel %>%
+  mutate(
+    provincia = as.factor(provincia),
+    cantidad_viviendas_aproximadas = as.numeric(cantidad_viviendas_aproximadas),
+    cantidad_familias_aproximada = as.numeric(cantidad_familias_aproximada),
+    superficie_m2 = as.numeric(superficie_m2),
+    personas_genero_masc = as.numeric(personas_genero_masc),
+    personas_genero_fem = as.numeric(personas_genero_fem),
+    personas_genero_otrx = as.numeric(personas_genero_otrx)
+  )
+baserenabap_prov <- baserenabap_sel %>%
+  group_by(provincia) %>%
+  summarize(
+    cantidad_barrios = n(),
+    cantidad_viviendas_aproximadas = sum(cantidad_viviendas_aproximadas, na.rm = TRUE),
+    cantidad_familias_aproximada = sum(cantidad_familias_aproximada, na.rm = TRUE),
+    superficie_m2 = sum(superficie_m2, na.rm = TRUE),
+    personas_genero_masc = sum(personas_genero_masc, na.rm = TRUE),
+    personas_genero_fem = sum(personas_genero_fem, na.rm = TRUE),
+    personas_genero_otrx = sum(personas_genero_otrx, na.rm = TRUE)
+  ) 
+summary(baserenabap_sel)
+```
+A modo de prueba, visualizaremos el resumen de otra manera con la librería DT. 
+
+```{r}
+library(DT) #Instalamos DT para probar otra manera de visualizar el resumen
+resumen <- summary(baserenabap_sel)
+
+datatable(resumen, 
+          options = list(dom = 't', pageLength = 5, paging = TRUE, searching = FALSE),
+          rownames = FALSE)
+```
+
+Tenemos la nueva base con la misma cantidad de observaciones y solo 8 variables. Vamos a proceder a agruparlas por provincia: 
+
+Veamos cómo se ve esta nueva base:
+
+```{r}
+paged_table(baserenabap_prov, options(rows.print=25, cols.print=9)) #Visualizamos el archivo con la función "paged_table". 
+```
+### Visualización gráfica de los datos del RENABAP
+
+Ahora veremos lo anterior gráficamente. 
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+library(geoAr)
+arg_geom <- get_geo(geo = "ARGENTINA", level = "provincia") #Me descargo elemento "Argentina" de "get_geo".
+ggplot(arg_geom) +
+  geom_sf()
+```
+
+```{r}
+library(geofacet)
+```
+
+```{r}
+# 1. Cambiar el nombre de la variable de "codprov_censo" a "provincia" (lo dejo de backup)
+arg_geom <- arg_geom %>%
+  rename(provincia = codprov_censo)
+
+# 2. Convertir los códigos según el listado proporcionado
+codigo_conversion <- c("02" = "CABA", "06" = "BUENOS AIRES", "10" = "CATAMARCA",
+                        "14" = "CORDOBA", "18" = "CORRIENTES", "22" = "CHACO",
+                        "26" = "CHUBUT", "30" = "ENTRE RIOS", "34" = "FORMOSA",
+                        "38" = "JUJUY", "42" = "LA PAMPA", "46" = "LA RIOJA",
+                        "50" = "MENDOZA", "54" = "MISIONES", "58" = "NEUQUEN",
+                        "62" = "RIO NEGRO", "66" = "SALTA", "70" = "SAN JUAN",
+                        "74" = "SAN LUIS", "78" = "SANTA CRUZ", "82" = "SANTA FE",
+                        "86" = "SANTIAGO DEL ESTERO", "90" = "TUCUMAN",
+                        "94" = "TIERRA DEL FUEGO")
+
+arg_geom <- arg_geom %>%
+  mutate(provincia = codigo_conversion[provincia])
+
+```
+
+Ahora que tenemos el mapa de Argentina dividido en provincias y modificado el código de provincia, incluiremos la cantidad de barrios populares que hay en cada uno. Primero modificaremos el valor de cada dato en la base de RENABAP (baserenabap_prov) a los fines de hacerlo compatible con la forma exacta en que se nombran las provincias en geoAr. 
+
+```{r}
+baserenabap_prov <- baserenabap_prov %>%
+    mutate(provincia = ifelse(provincia == "Ciudad Autónoma de Buenos Aires", "CABA", toupper(provincia)))
+```
+
+```{r}
+library(stringi)
+baserenabap_prov <- baserenabap_prov %>%
+  mutate(
+    # Quitar acentos y caracteres especiales sin afectar los espacios
+    provincia = gsub("[^a-zA-Z0-9 ]", "", stri_trans_nfkd(provincia)),
+    provincia = toupper(provincia)  # Convertir a mayúsculas
+  )
+```
+
+Ahora sí podemos unir las bases. 
+
+```{r}
+mapa_completo <- arg_geom %>%
+  right_join(baserenabap_prov, by = "provincia")
+```
+
+#### Uso de ggplot
+
+Visualicemos la información.
+```{r}
+library(ggnewscale)
+```
+
+```{r, fig.dim = c(6, 8)}
+library(ggplot2)
+ggplot(mapa_completo) +
+  geom_sf(aes(fill = cantidad_barrios), color = "#8a8a8a") +
+  labs(subtitle = "Cantidad de BP por provincia") +
+  scale_fill_gradient2(
+    low = "#fbffff",
+    mid = "#539bca",
+    high = "#00628d",
+    midpoint = 1000,
+    space = "Lab",
+    na.value = "grey50",
+    guide=guide_legend(direction='horizontal', title.position='top', title.hjust=.5, label.hjust = .5, keywidth = 1, keyheight = 1),
+    aesthetics = "fill") +
+  geom_sf_label(aes(label = paste0(cantidad_barrios)), size = 2.5) + 
+  theme_light() +
+  theme(title = element_text(face = 'bold'),
+        legend.position = 'bottom')
+```
+
+Como podemos ver, la provincia de Buenos Aires es la que más barrios popualres tiene (casi quintuplicanodo la cantidad de barrios respecto de las provincias que le siguen en orden). Ahora veremos el mismo mapa pero con el porcentaje de viviendas que hay en barrios populares en cada provincia por sobre el total.
+
+Primero realizaremos un mapa transformando datos para buscar acrecentar la diferencia en colores entre las provincias: 
+
+```{r, fig.dim = c(6, 8)}
+# Crear el mapa
+# Calcular el porcentaje de viviendas por provincia y otras variables
+mapa_completo$porcentaje_viviendas <- round((mapa_completo$cantidad_viviendas_aproximadas / sum(mapa_completo$cantidad_viviendas_aproximadas)) * 100,2)
+mapa_completo$porcentaje_barrios <- round((mapa_completo$cantidad_barrios / sum(mapa_completo$cantidad_barrios)) * 100,2)
+mapa_completo$porcentaje_superf <- round((mapa_completo$superficie_m2 / sum(mapa_completo$superficie_m2)) * 100,2)
+
+library(ggplot2)
+
+# Aplicar transformación logarítmica
+mapa_completo$log_porcentaje_viviendas <- log2(mapa_completo$porcentaje_viviendas)
+
+# Crear el gráfico
+mapa_completo_plot <- ggplot(mapa_completo) +
+  geom_sf(aes(fill = log_porcentaje_viviendas), color = "#8a8a8a") +
+  labs(subtitle = "Porcentaje de Viviendas en BP por Provincia - Opc. 01") +
+  scale_fill_gradient2(
+    low = "#fbffff",
+    mid = "#bae0fc",
+    high = "#00628d",
+    midpoint = 0.5,  # El punto medio en la escala logarítmica
+    space = "Lab",
+    na.value = "grey50",
+    guide = guide_legend(direction = 'horizontal', 
+                        title.position = 'top', 
+                        title.hjust = 0.5, 
+                        label.hjust = 0.5, 
+                        keywidth = 1, 
+                        keyheight = 1),
+    aesthetics = "fill"
+  ) +
+  geom_sf_label(aes(label = paste0(round(porcentaje_viviendas, 2), "%")), size = 2.5) + 
+  theme_light() +
+  theme(title = element_text(face = 'bold'),
+        legend.position = 'bottom')
+
+mapa_completo_plot
+```
+Ahora intentaremos visualizarlo otra vez usando breaks. 
+
+```{r, fig.dim = c(6, 8)}
+
+# Crear el mapa
+ggplot(mapa_completo) +
+  geom_sf(aes(fill = porcentaje_viviendas), color = "#8a8a8a") +
+  labs(subtitle = "Porcentaje de Viviendas en BP por Provincia - Opc. 02") +
+  scale_fill_distiller(
+    palette = "Blues",
+    breaks = c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10),
+    trans = 'log2',
+    direction = 1,
+    guide = guide_legend(
+      direction = 'horizontal',
+      title.position = 'top',
+      title.hjust = .5,
+      label.hjust = .5,
+      keywidth = 1,
+      keyheight = 1
+    )
+  ) +
+  geom_sf_label(aes(label = paste0(round(porcentaje_viviendas, 2), "%")), size = 2.3) +  # Mostrar porcentaje con etiquetas
+  theme_light() +
+  theme(
+    title = element_text(face = 'bold'),
+    legend.position = 'bottom'
+  )
+
+```
+
+Tras varios intentos, ambas opciones arrojan buenos resultados en términos visuales. Esto llevó su tiempo, pero permitió entender que es posible tanto transformar las escalas (log2) como generar quiebres en forma manual para lograr corregir la doble complejidad que tiene esta base, al tener valores extremos: el superior, que es la Provincia de Buenos Aires, es siete veces más grande que el segundo valor; como en el inferior, que es La Pampa, que obligó a agregar un decimal más en el redondeo de manera de no obtener un valor nulo (0.0). 
+
+Como podemos ver, el 49,11% de las viviendas en barrios populares están ubicadas en Buenos Aires. Además, podemos corroborar que la problemática se concentra en solo 5 provincias. A modo de desafío, resta entender cómo hacer para que el valor de La Pampa no quede en gris tras la transformación logarítmica de los datos, que fue necesaria para poder ver los valores más marcados con la paleta elegida. Este problema surge de que todos los valores se encuentren en un rango chico (0,01% a 7% aprox) y que haya un solo valor extremo (Buenos Aires, con más del 49%).
+
+Ahora veamos el listado de las provincias ordenadas según esta variable: 
+
+```{r}
+# Crear la tabla resumen
+tabla_resumen <- mapa_completo %>%
+  select(provincia, cantidad_barrios, porcentaje_viviendas) %>%
+  arrange(desc(porcentaje_viviendas))
+
+# Mostrar la tabla resumen con paged_table
+tabla_resumen %>%
+  paged_table(options(rows.print = 25))
+```
+
+En función de esto es posible empezar a identificar algunos datos llamativos:
+
+- CABA tiene solo 50 barrios pero concentra el 7% de las viviendas en barrios populares. - Mendoza tiene varios barrios (317) pero solo tiene el 2,2% de las viviendas en barrios populares. 
+- Buenos Aires concentra bastante menos que la mitad de barrios populares. Sin embargo, tiene casi la mitad de las viviendas del país en barrios populares. 
+- Es probable que la situación de CABA y Buenos Aires se da a la alta concentración de barrios populares densos que tiene el Área Metropolitana de Buenos Aires. 
+
+### Visualización con ggplot 
+
+A los fines de ver gráficamente la comparación de la cantidad de barrios por provincia, haremos un gráfico de barras. 
+
+```{r, fig.dim = c(13, 13)}
+ggplot(mapa_completo)+
+  geom_bar(aes(x=provincia, weight=cantidad_barrios), fill="#00628d")+
+  labs(title="Cantidad de Barrios Populares por Provincia",
+       y="Cantidad de Barrios populares por provincia",
+       x="Provincia",
+       caption="Fuente: datos provistos RENABAP")+
+  geom_label(aes(x=provincia, y=cantidad_barrios, label=as.numeric(round(cantidad_barrios,1))), size = 3.5, label.size =0.5, nudge_y = 50)+
+  coord_flip()+
+  theme_light()
+```
+
+### Visualización en geofacet
+
+Ahora analizaremos esto en geofacet. 
+
+```{r}
+library(geofacet)
+grid_preview(argentina_grid2)
+```
+```{r}
+# COMANDOS EMPATAR NOMBRES DE DISTRITOS DE GRILLA (geofacet) Y BASE DE DATOS
+argentina_grid2 <-  data.frame(
+  col = c(1, 3, 5, 1, 2, 1, 3, 4, 2, 2, 4, 1, 3, 3, 4, 1, 2, 2, 1, 1, 2, 1, 1, 1),
+  row = c(1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 7, 7, 8, 9, 10),
+  code = c("AR-Y", "AR-P", "AR-N", "AR-A", "AR-T", "AR-K", "AR-H", "AR-W", "AR-G", "AR-X", "AR-E", "AR-F", "AR-S", "AR-B", "AR-C", "AR-J", "AR-D", "AR-L", "AR-M", "AR-Q", "AR-R", "AR-U", "AR-Z", "AR-V"),
+  name_prov = c("JUJUY", "FORMOSA", "MISIONES", "SALTA", "TUCUMAN", "CATAMARCA", "CHACO", "CORRIENTES", "SANTIAGO DEL ESTERO", "CORDOBA", "ENTRE RIOS", "LA RIOJA", "SANTA FE", "BUENOS AIRES", "CABA", "SAN JUAN", "SAN LUIS", "LA PAMPA", "MENDOZA", "NEUQUEN", "RIO NEGRO", "CHUBUT", "SANTA CRUZ", "TIERRA DEL FUEGO"),
+  stringsAsFactors = FALSE
+)
+```
+
+```{r}
+# Renombrar la columna "provincia" a "name_prov"
+names(mapa_completo)[names(mapa_completo) == "provincia"] <- "name_prov"
+```
+
+```{r}
+library(tidyr)
+# Seleccionar solo las columnas de interés
+mapa_completo_largo <- mapa_completo %>%
+  select(name_prov, porcentaje_barrios, porcentaje_viviendas, porcentaje_superf) %>%
+  gather(variable, porcentaje, porcentaje_barrios:porcentaje_superf)
+```
+
+```{r, fig.dim = c(10, 13)}
+ggplot(mapa_completo_largo, aes(variable, porcentaje, fill = variable)) +
+  geom_col() +
+  geom_text(aes(label = paste0(porcentaje, "%"), 
+                y = porcentaje),
+            hjust = -0.5,
+            size = 2) +  # Agregar etiquetas de texto con los porcentajes
+  coord_flip() +
+  theme_bw() +
+  facet_geo(~ name_prov, grid = argentina_grid2) +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(title = "Distribución de las variables por provincia",
+       caption = "Datos RENABAP",
+       x = NULL, 
+       y = "Porcentaje") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        strip.text.x = element_text(size = 6),
+        legend.text = element_text(size = 5),  # Ajustar tamaño de texto de la leyenda
+        legend.title = element_text(size = 5)) +  # Ajustar tamaño del título de la leyenda
+  guides(fill = guide_legend(title = "Variable", label.theme = element_text(size = 8)))  # Ajustar tamaño del texto en la guía
+
+```
+
+Como podemos observar, algunas provincias presentan diferencias considerables respecto de su participación en cada una de las variables. A continuación se detallan algunos casos particulares: 
+
+- CABA tiene un 7% de las viviendas totales y sus BP solo representan 0,5% de la superficie total de BP en el país. 
+- Misiones tiene un 8,8% de la superficie total de BP en el país, siendo la segunda provincia luego de Buenos Aires, pero solo un 4,8% del total de las viviendas en BP del país se encuentran allí. 
+- Buenos Aires destaca en todas las categorías, aunque con cierta dispersión. Más del 49% de las viviendas ubicadas en BP del país se encuentran en esta provincia, pero representa  el 34% de los barrios a nivel país. 
+
+### Uso de leatflet (VIZ)
+
+Ahora veremos el mapa de un modo interactivo. Para ello, haremos varios análisis según categorías distintas: 
+
+#### Relación de hogares por superficie
+
+Se utilizará, a modo de proxy de densidad y hacinamiento, la relación entre la superficie y la cantidad de hogares a nivel promedio por BP. 
+
+Primero deberemos crear un nuevo campo. 
+
+```{r}
+# Calcula la relación entre superficie_m2 y cantidad_hogares cada 1 km²
+mapa_completo$viviendas_por_km2 <- round(mapa_completo$cantidad_viviendas_aproximadas / (mapa_completo$superficie_m2 / 1000000),2)
+```
+
+Ahora activamos las librerías que usaremos: 
+
+```{r}
+library(sf)
+library(leaflet) #Activamos librerías
+```
+
+Haremos un leaflet para ver cómo se ve el mapa analizado desde esta dimensión: 
+
+```{r}
+mapa_completo_mapageo <- st_as_sf(mapa_completo)
+
+pal_km2 <- colorQuantile("Blues", domain = mapa_completo_mapageo$viviendas_por_km2, n = 10)
+
+leaflet(st_zm(mapa_completo_mapageo) %>% st_transform(4326)) %>%
+  addTiles() %>%
+  #setView(lat=-34.5828, lng=-58.3792,zoom=16)%>%
+  addProviderTiles(providers$CartoDB.Positron, group = "OSM",
+                   options = providerTileOptions(minzoom = 1, maxzoom = 15)) %>%
+  addLayersControl(
+    baseGroups = c("OSM","Satelite"), 
+    overlayGroups = c("Cant. viviendas por km2"))%>%
+  addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
+              fillColor = ~pal_km2(viviendas_por_km2),
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.7,
+              popup = ~paste("<strong> Provincia: </strong>", name_prov, "<br> <strong> Cantidad de viviendas por km2: </strong>", viviendas_por_km2),
+              group = "Cant. viviendas por km2") %>%
+  addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
+              fillColor = "white",
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.5)
+```
+
+Como podemos observar, los colores más fuertes, que responden a un mayor número de viviendas por km2 en barrios populares, se concentran en el norte del país, además de la provincia de Buenos Aires y CABA, que junto a Jujuy y Santa Fe son las que lideran el ranking. 
+
+Estos valores se pueden considerar un buen *proxy* de densidad y hacinamiento dentro de los barrios populares de cada provincia. Como vemos, mientras más al sur nos encontramos, menor es la densidad. Si esta variable fuera un *proxy* de complejidad de re-urbanización o intervención orientada a la integración urbana, las provincias en tonos más oscuros indicarían mayor complejidad. 
+
+Veamos estos valores en forma de tabla ordenados de mayor a menor. 
+
+```{r}
+# Creamos una tabla interactiva
+datatable(mapa_completo_mapageo[, c("name_prov", "viviendas_por_km2")],
+          options = list(pageLength = 24))  # Ajustamos el número de filas por página según sea necesario
+```
+
+
+Como podemos observar, CABA tiene una densidad de viviendas por km2 amoliamente superior a la segunda provincia (Jujuy), lo que da la pauta de que son barrios populares altamente densificados y con probabilidad alta de hacinamiento. 
+
+#### Cantidad y Porcentaje de Barrios Populares por Provincia sobre Total País
+
+Ahora visualizremos la cantidad de barrios populares por provincia y el porcentaje que representa cada una de ellas sobre el total país. 
+
+```{r}
+pal_cant_bar <- colorQuantile("Blues", domain = mapa_completo_mapageo$cantidad_barrios, n = 10)
+pal_porc_bar <- colorQuantile("Blues", domain = mapa_completo_mapageo$porcentaje_barrios, n = 10)
+
+
+leaflet(st_zm(mapa_completo_mapageo) %>% st_transform(4326)) %>%
+  addTiles() %>%
+  #setView(lat=-34.5828, lng=-58.3792,zoom=16)%>%
+  addProviderTiles(providers$CartoDB.Positron, group = "OSM",
+                   options = providerTileOptions(minzoom = 1, maxzoom = 15)) %>%
+  addLayersControl(
+    baseGroups = c("OSM","Satelite"), 
+    overlayGroups = c("Cant. BP por Provincia", "Porcentaje BP por Provincia sobre Total País"))%>%
+  addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
+              fillColor = ~pal_cant_bar(cantidad_barrios),
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.7,
+              popup = ~paste("<strong> Provincia: </strong>", name_prov, "<br> <strong> Cantidad BP en la provincia: </strong>", cantidad_barrios),
+              group = "Cant. BP por Provincia") %>%
+  addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
+              fillColor = ~pal_porc_bar(porcentaje_barrios),
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.7,
+              popup = ~paste("<strong> Provincia: </strong>",name_prov, "<br> <strong> Porcentaje BP sobre Total País: </strong>", porcentaje_barrios,"%"),
+              group = "Porcentaje BP sobre Total País") %>%
+  addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
+              fillColor = "white",
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.5)
+```
+
+Ahora probamos el mismo mapa con la función colorQuantile:
+
+```{r}
+qpal_barrioscant <- colorQuantile("Blues", domain = mapa_completo_mapageo$cantidad_barrios, n = 10)
+qpal_barriosporc <- colorQuantile("Blues", domain = mapa_completo_mapageo$porcentaje_barrios, n = 10)
+
+
+leaflet(st_zm(mapa_completo_mapageo) %>% st_transform(4326)) %>%
+  addTiles() %>%
+  #setView(lat=-34.5828, lng=-58.3792,zoom=16)%>%
+  addProviderTiles(providers$CartoDB.Positron, group = "OSM",
+                   options = providerTileOptions(minzoom = 1, maxzoom = 15)) %>%
+  addLayersControl(
+    baseGroups = c("OSM","Satelite"), 
+    overlayGroups = c("Cant. BP por Provincia", "Porcentaje BP por Provincia sobre Total País"))%>%
+  addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
+              fillColor = ~qpal_barrioscant(cantidad_barrios),
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.7,
+              popup = ~paste("<strong> Provincia: </strong>", name_prov, "<br> <strong> Cantidad BP en la provincia: </strong>", cantidad_barrios),
+              group = "Cant. BP por Provincia") %>%
+  addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
+              fillColor = ~qpal_barriosporc(porcentaje_barrios),
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.7,
+              popup = ~paste("<strong> Provincia: </strong>",name_prov, "<br> <strong> Porcentaje BP sobre Total País: </strong>", porcentaje_barrios,"%"),
+              group = "Porcentaje BP sobre Total País")
+```
+
+## Respuesta a la pregunta
+
+Tras realizar una exploración profunda de los datos, responderemos a la pregunta. 
+
+A continuación, introduciremos las modificaciones necesarias sobre la variable “V3”, que es “provincia”, de acuerdo al diccionario ya citado en el TP N°1 y que se encuentra disponible en la carpeta 00-Data.
+
+```{r}
+basemipieza$V3 <- as.integer(basemipieza$V3) #Convertimos a integer.
+#Cambiamos los nombres de las columnas
+basemipieza <- mutate(basemipieza, V3=case_when(
+    V3 == 1 ~ "BUENOS AIRES", 
+    V3 == 2 ~ "CABA",
+    V3 == 3 ~ "CATAMARCA",
+    V3 == 4 ~ "CHACO",
+    V3 == 5 ~ "CHUBUT",
+    V3 == 6 ~ "CORDOBA",
+    V3 == 7 ~ "CORRIENTES",
+    V3 == 8 ~ "ENTRE RIOS",
+    V3 == 9 ~ "FORMOSA",
+    V3 == 10 ~ "JUJUY",
+    V3 == 11 ~ "LA PAMPA",
+    V3 == 12 ~ "LA RIOJA",
+    V3 == 13 ~ "MENDOZA",
+    V3 == 14 ~ "MISIONES",
+    V3 == 15 ~ "NEUQUEN",
+    V3 == 16 ~ "RIO NEGRO",
+    V3 == 17 ~ "SALTA",
+    V3 == 18 ~ "SAN JUAN",
+    V3 == 19 ~ "SAN LUIS",
+    V3 == 20 ~ "SANTA CRUZ",
+    V3 == 21 ~ "SANTA FE",
+    V3 == 22 ~ "SANTIAGO DEL ESTERO",
+    V3 == 23 ~ "TIERRA DEL FUEGO",
+    V3 == 24 ~ "TUCUMAN"))
+```
+
+Vamos a agrupar los valores por provincia. 
+
+```{r}
+basemipieza_prov <- basemipieza %>%
+  group_by(V3) %>%
+  summarize(
+    cantidad_encuestadas = n(),
+    porcentaje_encuestadas = round((n() / nrow(basemipieza)) * 100,2) #Sumamos un campo que sea el porcentaje de encuestadas sobre la base por provincia. 
+  )
+```
+
+Ahora realizaremos un gráfico de barras para visualizar esto. 
+
+```{r, fig.dim = c(13, 13)}
+ggplot(basemipieza_prov)+
+  geom_bar(aes(x=V3, weight=porcentaje_encuestadas), fill="#00628d")+
+  labs(title="Porcentaje de encuestadas por provincia",
+       y="Porcentaje de mujeres encuestadas por provincia",
+       x="Provincia",
+       caption="Fuente: elaboación propia")+
+  geom_label(aes(x=V3, y=porcentaje_encuestadas, label=as.numeric(round(porcentaje_encuestadas,1))), size = 3.5, label.size =0.5, nudge_y = 1.5)+
+  coord_flip()+
+  theme_light()
+```
+
+Ahora realizaremos esta comparación a nivel gráfico sobre un mapa. Primero creamos un ggplot geográfico con estos valores. Para ello, primero uniremos esta variable a la base de mapa_completo con left_join. 
+
+```{r}
+basemipieza_prov <- basemipieza_prov %>%
+  rename(provincia = V3) #Convertimos en provincia el valor V3.
+```
+```{r}
+mapa_mipieza <- arg_geom %>%
+  right_join(basemipieza_prov, by = "provincia")
+```
+
+
+```{r, fig.dim = c(6, 8)}
+# Aplicar transformación logarítmica
+mapa_mipieza$log_porcentaje_encuestadas <- log2(mapa_mipieza$porcentaje_encuestadas)
+
+# Crear el gráfico
+mapa_mipieza_plot <- ggplot(mapa_mipieza) +
+  geom_sf(aes(fill = log_porcentaje_encuestadas), color = "#8a8a8a") +
+  labs(subtitle = "Porcentaje de Encuestadas por Provincia") +
+  scale_fill_gradient2(
+    low = "#fbffff",
+    mid = "#bae0fc",
+    high = "#00628d",
+    midpoint = 0.5,  # El punto medio en la escala logarítmica
+    space = "Lab",
+    na.value = "grey50",
+    guide = guide_legend(direction = 'horizontal', 
+                        title.position = 'top', 
+                        title.hjust = 0.5, 
+                        label.hjust = 0.5, 
+                        keywidth = 1, 
+                        keyheight = 1),
+    aesthetics = "fill"
+  ) +
+  geom_sf_label(aes(label = paste0(round(porcentaje_encuestadas, 2), "%")), size = 2.5) + 
+  theme_light() +
+  theme(title = element_text(face = 'bold'),
+        legend.position = 'bottom')
+
+mapa_mipieza_plot
+```
+```{r, fig.dim = c(6, 8)}
+require(gridExtra)
+plot01 <- grid.arrange(mapa_mipieza_plot, mapa_completo_plot, nrow = 1)
+```
+
+A nivel gráfico, la comparación no muestra grandes desfasajes. Pero veamos esto con valores numéricos. Para ello, haremos una comparación simple a partir de la diferencia entre los valores. 
+
+```{r}
+mapa_completo$diferencia <- mapa_completo$porcentaje_viviendas - mapa_mipieza$porcentaje_encuestadas
+```
+
+Veamos ahora gráficamente esta diferencia. 
+
+```{r, fig.dim = c(13, 13)}
+ggplot(mapa_completo)+
+  geom_bar(aes(x=name_prov, weight=diferencia), fill="#16425b")+
+  labs(title="Diferencia de la participación entre % encuestadas y %viviendas por provincia ",
+       y="Diferencia entre categoría 'porcentaje_encuestadas' y 'porcentaje_viviendas' (pp)",
+       x="Provincia",
+       caption="Fuente: elaboración propia")+
+  geom_label(aes(x=name_prov, y=diferencia, label=as.numeric(round(diferencia,1))), size = 4, nudge_y = 0.5)+
+  coord_flip()+
+  theme_light()
+```
+
+### Conclusiones respecto de la pregunta
+
+Como podemos ver, la mayoría de las provincias registran diferencias muy chicas (menos de 2 pp). Solo en dos casos (CABA y Buenos Aires) se identifica una mayor diferencia: 
+
+- En el caso de CABA, la diferencia es en favor del porcentaje de viviendas en Barrios Populares sobre el total país, lo que indica que se encuestaron a menos mujeres en relación a la cantidad de viviendas que tiene dicha jurisdicción a nivel nacional.
+- En el caso de la provincia de Buenos Aires, la diferencia es en favor del porcentaje de encuestadas sobre el total país, lo que indica que se encuestaron a más mujeres en relación a la cantidad de viviendas que tiene dicha jurisdicción a nivel nacional. 
+
+**Nota aclaratoria:** Es importante entender que la comparación que a nivel metodológico más valor tendría sería contra la propia base de inscriptas al Programa, lo que se desarrollará en el Ejercicio Final / Integrador, dado que el objetivo de este Trabajo Práctico fue aprovechar a lograr hacer un análisis exploratorio de los datos que sirven para entender el contexto de la intervención. 
+
+
