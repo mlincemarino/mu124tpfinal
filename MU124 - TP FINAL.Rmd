@@ -61,11 +61,17 @@ Repasando, y a modo de resumen, en el ejercicio anterior se realizaron las sigui
 - Analizar el peso que tenía cada provincia en el conjunto de personas encuestadas para el estudio de Mi Pieza. 
 - Comparar la diferencia entre el porcentaje de mujeres entrevistadas de cad aprovincia y el peso de cada una de estas en el conjunto de barrios populares y personas que residen en los mismos a los fines de entender qué tan representativa era la muestra.  
 
-## Pregunta a responder
+## Preguntas a responder
 
-Siguiendo el análisis realizado en el Trabajo Práctico 01, y con el fin de poder empezar a visualizar geográficamente la información, responderemos a la siguiente pregunta de investigación: **¿existe un balance entre la cantidad de mujeres de la muestra en Mi Pieza y la cantidad de hogares que residen en barrios populares por provincia?** Para responder a esta pregunta, primero realizaremos una exploración de los datos. 
+Siguiendo el análisis realizado en el Trabajo Práctico 01, y con el fin de poder empezar a visualizar geográficamente la información, responderemos a la siguiente pregunta de investigación: 
 
-## Desarrollo del ejercicio
+- **¿Hay un balance entre la cantidad de hogares en barrios populares por provincia y la cantidad de sorteadas en cada una?**
+- **¿Existe un balance entre la cantidad de mujeres de la muestra en Mi Pieza y la cantidad de hogares que residen en barrios populares por provincia?** 
+- **¿Existe un balance entre la cantidad de mujeres de la muestra en Mi Pieza y la cantidad de mujeres que salieron sorteadas por provincia?**
+
+Para responder a estas preguntas, primero realizaremos una exploración de los datos. 
+
+## Desarrollo del ejercicio - Parte 01 - Análisis exploratorio y primeras visualizaciones
 
 ### Importación de la nueva base de datos y exploración de los datos 
 
@@ -264,7 +270,7 @@ mapa_completo$log_porcentaje_viviendas <- log2(mapa_completo$porcentaje_vivienda
 # Crear el gráfico
 mapa_completo_plot <- ggplot(mapa_completo) +
   geom_sf(aes(fill = log_porcentaje_viviendas), color = "#8a8a8a") +
-  labs(subtitle = "Porcentaje de Viviendas en BP por Provincia - Opc. 01") +
+  labs(subtitle = "Porcentaje de Viviendas en BP - Opc. 01") +
   scale_fill_gradient2(
     low = "#fbffff",
     mid = "#bae0fc",
@@ -401,7 +407,7 @@ ggplot(mapa_completo_largo, aes(variable, porcentaje, fill = variable)) +
   facet_geo(~ name_prov, grid = argentina_grid2) +
   scale_y_continuous(expand = c(0, 0)) +
   labs(title = "Distribución de las variables por provincia",
-       caption = "Datos RENABAP",
+       caption = "Fuente: elab. propia con datos RENABAP",
        x = NULL, 
        y = "Porcentaje") +
   theme(axis.title.x = element_blank(),
@@ -555,9 +561,7 @@ leaflet(st_zm(mapa_completo_mapageo) %>% st_transform(4326)) %>%
               group = "Porcentaje BP sobre Total País")
 ```
 
-## Respuesta a la pregunta
-
-Tras realizar una exploración profunda de los datos, responderemos a la pregunta. 
+Tras realizar una exploración profunda de los datos, comenzaremos a elaborar conclusiones preliminares que permitan responder a las preguntas
 
 A continuación, introduciremos las modificaciones necesarias sobre la variable “V3”, que es “provincia”, de acuerdo al diccionario ya citado en el TP N°1 y que se encuentra disponible en la carpeta 00-Data.
 
@@ -608,6 +612,7 @@ Ahora realizaremos un gráfico de barras para visualizar esto.
 ggplot(basemipieza_prov)+
   geom_bar(aes(x=V3, weight=porcentaje_encuestadas), fill="#00628d")+
   labs(title="% de encuestadas por provincia",
+       element_text(size = 12),
        y="Porcentaje de mujeres encuestadas por provincia",
        x="Provincia",
        caption="Fuente: elaboación propia")+
@@ -616,7 +621,7 @@ ggplot(basemipieza_prov)+
   theme_light()
 ```
 
-Ahora realizaremos esta comparación a nivel gráfico sobre un mapa. Primero creamos un ggplot geográfico con estos valores. Para ello, primero uniremos esta variable a la base de mapa_completo con left_join. 
+Ahora realizaremos esta comparación a nivel gráfico sobre un mapa. Primero creamos un ggplot geográfico con estos valores. Para ello, primero uniremos esta variable a la base de mapa_completo con right_join.  
 
 ```{r}
 basemipieza_prov <- basemipieza_prov %>%
@@ -658,7 +663,7 @@ mapa_mipieza_plot <- ggplot(mapa_mipieza) +
 
 mapa_mipieza_plot
 ```
-```{r, fig.dim = c(6, 8)}
+```{r, fig.dim = c(7, 8)}
 require(gridExtra)
 plot01 <- grid.arrange(mapa_mipieza_plot, mapa_completo_plot, nrow = 1)
 ```
@@ -666,7 +671,7 @@ plot01 <- grid.arrange(mapa_mipieza_plot, mapa_completo_plot, nrow = 1)
 A nivel gráfico, la comparación no muestra grandes desfasajes. Pero veamos esto con valores numéricos. Para ello, haremos una comparación simple a partir de la diferencia entre los valores. 
 
 ```{r}
-mapa_completo$diferencia <- mapa_completo$porcentaje_viviendas - mapa_mipieza$porcentaje_encuestadas
+mapa_completo$diferencia <- mapa_mipieza$porcentaje_encuestadas - mapa_completo$porcentaje_viviendas
 ```
 
 Veamos ahora gráficamente esta diferencia. 
@@ -681,20 +686,24 @@ barras_dif <- ggplot(mapa_completo)+
   geom_label(aes(x=name_prov, y=diferencia, label=as.numeric(round(diferencia,1))), size = 4, nudge_y = 0.5)+
   coord_flip()+
   theme_light()
+
+barras_dif
 ```
 
-### Conclusiones respecto de la pregunta
+### Conclusiones preliminares
 
 Como podemos ver, la mayoría de las provincias registran diferencias muy chicas (menos de 2 pp). Solo en dos casos (CABA y Buenos Aires) se identifica una mayor diferencia: 
 
 - En el caso de CABA, la diferencia es en favor del porcentaje de viviendas en Barrios Populares sobre el total país, lo que indica que se encuestaron a menos mujeres en relación a la cantidad de viviendas que tiene dicha jurisdicción a nivel nacional.
 - En el caso de la provincia de Buenos Aires, la diferencia es en favor del porcentaje de encuestadas sobre el total país, lo que indica que se encuestaron a más mujeres en relación a la cantidad de viviendas que tiene dicha jurisdicción a nivel nacional. 
 
-**Nota aclaratoria:** Es importante entender que la comparación que a nivel metodológico más valor tendría sería contra la propia base de inscriptas al Programa, lo que se desarrollará el apartado subsiguiente, dado que el objetivo de este Trabajo Práctico fue aprovechar a lograr hacer un análisis exploratorio de los datos que sirven para entender el contexto de la intervención. 
+**Nota aclaratoria:** Es importante entender que la comparación que a nivel metodológico más valor tendría sería contra la propia base de inscriptas al Programa, lo que se desarrollará el apartado subsiguiente, dado que el objetivo de este Trabajo Práctico fue aprovechar la oportunidad para lograr hacer un análisis exploratorio de los datos que sirven para entender el contexto de la intervención. 
 
-## Visualizaciones interactivas
+## Desarrollo del ejercicio - Parte 02 - Visualizaciones interactivas
 
-Instalamos y llamamos tres liberías nuevas (ggiraph, ggtext y cowplot). 
+Para responder las restantes preguntas, realizaremos un trabajo más exhaustivo sobre la información disponible y utilizaremos nuevas herramientas de visualización. 
+
+En primer lugar, instalamos y llamamos tres liberías nuevas (ggiraph, ggtext y cowplot). 
 
 ```{r}
 library(ggiraph)
@@ -704,7 +713,7 @@ library(cowplot)
 
 A continuación, se creará un gráfico de barras con interacciones, que denominaremos "barras_interactivo".
 
-```{r, fig.dim = c(13, 13)}
+```{r, fig.dim = c(8, 10)}
 barras_interactivo <- ggplot(mapa_completo)+
   geom_bar(aes(x=name_prov, weight=diferencia), fill="#16425b")+
   labs(title="Diferencia de la participación entre % encuestadas y %viviendas por provincia ",
@@ -720,13 +729,6 @@ barras_interactivo <- ggplotly(barras_interactivo) #Configurar etiquetas una vez
 barras_interactivo 
 ```
 Corroborado su funcionamiento, buscaremos hacerlo interactuar con el mapa "mapa_mipieza_plot", al que primero haremos interactivo. 
-
-```{r}
-# Crear el gráfico
-mapa_mipieza_plot_interact <- ggplotly(mapa_mipieza_plot) #Configurar etiquetas una vez que funcione
-
-mapa_mipieza_plot_interact
-```
 
 ```{r}
 # Calcular la línea de regresión en función de la variable 'diferencia'
@@ -771,19 +773,6 @@ graf_diferencia <- ggplot(mapa_completo, aes(x = cantidad_barrios, y = diferenci
   labs(title = "Análisis de representatividad de la muestra",
        subtitle = "Diferencia entre porcentaje de mujeres encuestadas sobre porcentaje de viviendas en BP en cada provincia.")
 
-# Convertir a gráfico interactivo con plotly
-graf_diferencia_interactivo <- ggplotly(graf_diferencia)
-
-# Mostrar el gráfico interactivo
-graf_diferencia_interactivo
-
-
-girafe(
-  ggobj = graf_diferencia,
-  width_svg = 12,
-  height_svg = 12
-)
-
 mapa_mipieza_plot_interactivo <- ggplot(mapa_mipieza) +
   geom_sf(data=arg_geom, aes(geometry=geometry), color = "#8a8a8a", size=.1, alpha=.1) +
   labs(subtitle = "% de Encuestadas por Provincia") +
@@ -809,12 +798,6 @@ mapa_mipieza_plot_interactivo <- ggplot(mapa_mipieza) +
   geom_sf_interactive(data=arg_geom,aes(tooltip = provincia,
                                    data_id = provincia))
 
-girafe(
-  ggobj = mapa_mipieza_plot_interactivo,
-  width_svg = 12,
-  height_svg = 12
-)
-
 girafe(ggobj = plot_grid(plotlist=list(graf_diferencia, mapa_mipieza_plot_interactivo), ncol=2),
        pointsize=12,
        opts_text(size = 12, family = "Helvetica"),
@@ -823,7 +806,15 @@ girafe(ggobj = plot_grid(plotlist=list(graf_diferencia, mapa_mipieza_plot_intera
        options = list(
          opts_hover_inv(css = "fill:#bae0fc;stroke:#00628d;r:5pt;")))
 ```
- ## Análisis en función de cantidad de inscriptas
+El gráfico anterior nos permite visualizar información importante: 
+
+- Las provincias que más diferencia tienen presentan valores extremos en el eje X: CABA, que destaca por ser el valor más extremo en diferencia negativa (eje Y), a la vez que uno de los más chicos en cantidad de barrios populares (eje X). A su vez, la provincia de Buenos Aires tiene un valor extremo para ambos ejes. 
+- La mayor cantidad de provincias se encuentran debajo del 0 en el eje Ym, lo que indica que presentan diferencias negativas entre el % de vviviendas en BP de cada provincia y el % de mujeres encuestadas. Es decir, de acuerdo a este análisis estarían siendo subrepresentadas la mayor parte de las provincias. 
+- Las provincias que se encuentran entre las de diferencia más positiva (encima del 0 en el eje Y), son a su vez las provincias con más cantidad de barrios populares, dado que se encuentran a la derecha del eje X. 
+
+A pesar de las interpretaciones y conclusiones preliminares, resta analizar los datos a la luz de la relación que hay entre las sorteadas y las encuestadas, dado que puede que el primer desvío tenga lugar en el universo de mujeres que resultaron sorteadas.
+
+### Análisis en función de cantidad de inscriptas
  
 Para realizar el análisis de la cantidad de mujeres encuestadas en función de la cantidad de mujeres inscriptas y sorteadas a lo largo de la hitoria del Programa "Mi Pieza", es necesario primero descargar el dataset actualizado. El mismo fue obtenido del siguiente enlace de datos abiertos: https://datosabiertos.desarrollosocial.gob.ar/dataset/listado-de-participantes-de-los-sorteos-mi-pieza/resource/bb4d6278-b696-4dc5-a5e5-4c5bd08f5301. 
 
@@ -845,7 +836,7 @@ Dado que lo que nos importa es obtener información agregada por provincia, proc
 
 ```{r}
 basemipieza_seleccionadas <- basemipieza_inscriptas %>%
-  filter(sorteo!= "") %>%
+   filter(sorteo %in% c(3, 4)) %>%
   group_by(provincia)
 ```
 
@@ -856,7 +847,6 @@ basemipieza_seleccionadas_prov <- basemipieza_seleccionadas %>%
     seleccionadas = n(),
     porcentaje_seleccionadas = round((n() / nrow(basemipieza_seleccionadas) * 100),2))
 ```
-
 
 Visualicemos rápidamente los valores: 
 
@@ -869,11 +859,191 @@ Ahora que contamos con los datos filtrados y agregados, podemos proceder a reali
 
 ```{r}
 basemipieza_seleccionadas_prov <- basemipieza_seleccionadas_prov %>%
-    mutate(
-      provincia = gsub("[^a-zA-Z0-9 ]", "", 
-                       stri_trans_nfkd(provincia),
-                       toupper(provincia)))
+    mutate(provincia = ifelse(provincia == "CIUDAD AUTONOMA DE BUENOS AIRES", "CABA", provincia))
 ```
+
+```{r}
+library(stringi)
+basemipieza_seleccionadas_prov <- basemipieza_seleccionadas_prov %>%
+  mutate(
+    # Quitar acentos y caracteres especiales sin afectar los espacios
+    provincia = gsub("[^a-zA-Z0-9 ]", "", stri_trans_nfkd(provincia)),
+    provincia = toupper(provincia)  # Convertir a mayúsculas
+  )
+```
+
+Con esta modificación hecha, realizaremos un left join que nos permita unificar la base. 
+
+```{r}
+mapa_mipieza_seleccionadas <- arg_geom %>%
+  right_join(basemipieza_prov, by = "provincia") %>%
+  right_join(basemipieza_seleccionadas_prov, by = "provincia")
+```
+
+Con los datos unificados, ahora sí veremos si la base de mujeres encuestadas está distribuida en forma similar a la cantidad de inscriptas. Para ello, agregaremos un último campo, que es el de diferencia, tanto en puntos porcentuales como en términos relativos. 
+
+```{r}
+mapa_mipieza_seleccionadas <- mapa_mipieza_seleccionadas  %>%
+  mutate(diferencia_final = porcentaje_encuestadas - porcentaje_seleccionadas, 
+         diferencia_relativa = round(diferencia_final / porcentaje_seleccionadas * 100, 2)) #Arreglar CABA que sigue figurando como CIUDAD AUTONOMA
+```
+#### IMP Arreglar CABA que sigue figurando como CIUDAD AUTONOMA
+
+Explorando los datos, vemos que las diferencias relativas son importantes en algunas provincias. Sin embargo, es necesario analizar estas diferencias contemplando el tamaño o incidencia que tienen estas provincias en el total de mujeres seleccionadas. En algunos casos, se trata de provincias cuyo peso relativo es de menos del 2%, por lo que es esperable que haya una diferencia importante. 
+
+El gráfico con dos coordenadas permitirá mejorar la visualización de esta diferencia al graficar el peso específico que tiene cada provincia. 
+
+```{r}
+# Calcular la línea de regresión en función de la variable 'diferencia'
+linea_regresion_sel <- lm(diferencia_relativa ~ seleccionadas, data = mapa_mipieza_seleccionadas)
+
+# Crear el gráfico ggplot con los cambios
+graf_diferencia_sel <- ggplot(mapa_mipieza_seleccionadas, aes(x = seleccionadas, y = diferencia_relativa)) +
+  geom_point_interactive(
+    stroke = 1,
+    alpha = 0.7,
+    aes(
+      size = porcentaje_seleccionadas,
+      data_id = provincia,
+      tooltip = paste0(
+        provincia,
+        "<br> Diferencia relativa: ", round(diferencia_relativa, 2),
+        "<br> % de Seleccionadas: ", round(porcentaje_seleccionadas, 2),
+        "<br> % de Encuestadas: ", round(porcentaje_encuestadas, 2)
+      )
+    )
+  ) +
+  geom_abline(intercept = coef(linea_regresion_sel)[1], slope = coef(linea_regresion_sel)[2], linetype = "dashed", color = "gray") +
+  scale_x_continuous(
+    name = "A DEFINIR",
+    labels = scales::number_format()) +
+  scale_y_continuous(
+    name = "DEFINIR 2",
+    labels = scales::percent_format()
+  ) +
+  theme_minimal() +
+  theme(
+    plot.subtitle = element_markdown(size = 10),
+    plot.title = element_markdown(size = 14),
+    legend.position = "none",
+    axis.text.x = element_text(size = 4),
+    axis.text.y = element_text(size = 4)
+  )+
+  scale_fill_distiller(
+    palette = "Blues")+
+  labs(title = "Análisis de representatividad de la muestra 02",
+       subtitle = "Diferencia entre porcentaje de mujeres encuestadas sobre porcentaje de mujeres seleccionadas en cada provincia.")
+
+mapa_mipieza_plot_interactivo_02 <- ggplot(mapa_mipieza_seleccionadas) +
+  geom_sf(data=arg_geom, aes(geometry=geometry), color = "#8a8a8a", size=.1, alpha=.1) +
+  scale_fill_gradient2(
+    low = "#fbffff",
+    mid = "#bae0fc",
+    high = "#00628d",
+    midpoint = 0.5,  # El punto medio en la escala logarítmica
+    space = "Lab",
+    na.value = "grey50",
+    guide = guide_legend(direction = 'horizontal', 
+                        title.position = 'top', 
+                        title.hjust = 0.5, 
+                        label.hjust = 0.5, 
+                        keywidth = 1, 
+                        keyheight = 1),
+    aesthetics = "fill"
+  ) + 
+  theme_light() +
+  theme(title = element_text(face = 'bold'),
+        plot.subtitle = element_markdown(size = 10),
+        legend.position = 'bottom') +
+  geom_sf_interactive(data=arg_geom,aes(tooltip = provincia,
+                                   data_id = provincia))
+
+girafe(ggobj = plot_grid(plotlist=list(graf_diferencia_sel, mapa_mipieza_plot_interactivo_02), ncol=2),
+       pointsize=12,
+       opts_text(size = 12, family = "Helvetica"),
+       width_svg = 12,
+       height_svg = 12,
+       options = list(
+         opts_hover_inv(css = "fill:#bae0fc;stroke:#00628d;r:5pt;")))
+```
+
+Ahora calculemos lo mismo asignando peso en el eje X a otra variable, que es la diferencia total (en puntos porcentales). 
+
+```{r}
+# Calcular la línea de regresión en función de la variable 'diferencia'
+linea_regresion_sel_02 <- lm(diferencia_relativa ~ diferencia_final, data = mapa_mipieza_seleccionadas)
+
+# Crear el gráfico ggplot con los cambios
+graf_diferencia_sel <- ggplot(mapa_mipieza_seleccionadas, aes(x = diferencia_final, y = diferencia_relativa)) +
+  geom_point_interactive(
+    stroke = 1,
+    alpha = 0.7,
+    aes(
+      size = porcentaje_seleccionadas,
+      data_id = provincia,
+      tooltip = paste0(
+        provincia,
+        "<br> Diferencia relativa: ", round(diferencia_relativa, 2),
+        "<br> % de Seleccionadas: ", round(porcentaje_seleccionadas, 2),
+        "<br> % de Encuestadas: ", round(porcentaje_encuestadas, 2)
+      )
+    )
+  ) +
+  geom_abline(intercept = coef(linea_regresion_sel_02)[1], slope = coef(linea_regresion_sel_02)[2], linetype = "dashed", color = "gray") +
+  scale_x_continuous(
+    name = "A DEFINIR",
+    labels = scales::number_format()) +
+  scale_y_continuous(
+    name = "DEFINIR 2",
+    labels = scales::percent_format()
+  ) +
+  theme_minimal() +
+  theme(
+    plot.subtitle = element_markdown(size = 10),
+    plot.title = element_markdown(size = 14),
+    legend.position = "none",
+    axis.text.x = element_text(size = 4),
+    axis.text.y = element_text(size = 4)
+  )+
+  scale_fill_distiller(
+    palette = "Blues")+
+  labs(title = "Análisis de representatividad de la muestra 02",
+       subtitle = "Diferencia entre porcentaje de mujeres encuestadas sobre porcentaje de mujeres seleccionadas en cada provincia.")
+
+mapa_mipieza_plot_interactivo_02 <- ggplot(mapa_mipieza_seleccionadas) +
+  geom_sf(data=arg_geom, aes(geometry=geometry), color = "#8a8a8a", size=.1, alpha=.1) +
+  scale_fill_gradient2(
+    low = "#fbffff",
+    mid = "#bae0fc",
+    high = "#00628d",
+    midpoint = 0.5,  # El punto medio en la escala logarítmica
+    space = "Lab",
+    na.value = "grey50",
+    guide = guide_legend(direction = 'horizontal', 
+                        title.position = 'top', 
+                        title.hjust = 0.5, 
+                        label.hjust = 0.5, 
+                        keywidth = 1, 
+                        keyheight = 1),
+    aesthetics = "fill"
+  ) + 
+  theme_light() +
+  theme(title = element_text(face = 'bold'),
+        plot.subtitle = element_markdown(size = 10),
+        legend.position = 'bottom') +
+  geom_sf_interactive(data=arg_geom,aes(tooltip = provincia,
+                                   data_id = provincia))
+
+girafe(ggobj = plot_grid(plotlist=list(graf_diferencia_sel, mapa_mipieza_plot_interactivo_02), ncol=2),
+       pointsize=12,
+       opts_text(size = 12, family = "Helvetica"),
+       width_svg = 12,
+       height_svg = 12,
+       options = list(
+         opts_hover_inv(css = "fill:#bae0fc;stroke:#00628d;r:5pt;")))
+```
+
+#### Sacar La Pampa porque genera un valor extremo que distorsiona. 
 
 
 
