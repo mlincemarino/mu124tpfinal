@@ -424,7 +424,7 @@ Como podemos observar, algunas provincias presentan diferencias considerables re
 
 - CABA tiene un 7% de las viviendas totales y sus BP solo representan 0,5% de la superficie total de BP en el país. 
 - Misiones tiene un 8,8% de la superficie total de BP en el país, siendo la segunda provincia luego de Buenos Aires, pero solo un 4,8% del total de las viviendas en BP del país se encuentran allí. 
-- Buenos Aires destaca en todas las categorías, aunque con cierta dispersión. Más del 49% de las viviendas ubicadas en BP del país se encuentran en esta provincia, pero representa  el 34% de los barrios a nivel país. 
+- Buenos Aires destaca en todas las categorías, aunque con cierta dispersión. Más del 49% de las viviendas ubicadas en BP del país se encuentran en esta provincia, pero representa  el 34% de los barrios a nivel país.
 
 ### Uso de leatflet (VIZ)
 
@@ -462,13 +462,13 @@ leaflet(st_zm(mapa_completo_mapageo) %>% st_transform(4326)) %>%
                    options = providerTileOptions(minzoom = 1, maxzoom = 15)) %>%
   addLayersControl(
     baseGroups = c("OSM","Satelite"), 
-    overlayGroups = c("Cant. viviendas por km2"))%>%
+    overlayGroups = c("Cant. viviendas en BP por km2"))%>%
   addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
               fillColor = ~pal_km2(viviendas_por_km2),
               weight = 1,
               color = "black",
               fillOpacity = 0.7,
-              popup = ~paste("<strong> Provincia: </strong>", name_prov, "<br> <strong> Cantidad de viviendas por km2: </strong>", viviendas_por_km2),
+              popup = ~paste("<strong> Provincia: </strong>", name_prov, "<br> <strong> Cantidad de viviendas en BP por km2: </strong>", viviendas_por_km2),
               group = "Cant. viviendas por km2") %>%
   addPolygons(data = (st_zm(mapa_completo_mapageo) %>% st_transform(4326)),
               fillColor = "white",
@@ -728,7 +728,7 @@ barras_interactivo <- ggplotly(barras_interactivo) #Configurar etiquetas una vez
 
 barras_interactivo 
 ```
-Corroborado su funcionamiento, buscaremos hacerlo interactuar con el mapa "mapa_mipieza_plot", al que primero haremos interactivo. 
+Corroborado su funcionamiento, ahora buscaremos hacerlo interactuar con el mapa "mapa_mipieza_plot", al que primero haremos interactivo. 
 
 ```{r}
 # Calcular la línea de regresión en función de la variable 'diferencia'
@@ -814,9 +814,9 @@ El gráfico anterior nos permite visualizar información importante:
 
 A pesar de las interpretaciones y conclusiones preliminares, resta analizar los datos a la luz de la relación que hay entre las sorteadas y las encuestadas, dado que puede que el primer desvío tenga lugar en el universo de mujeres que resultaron sorteadas.
 
-### Análisis en función de cantidad de inscriptas
- 
-Para realizar el análisis de la cantidad de mujeres encuestadas en función de la cantidad de mujeres inscriptas y sorteadas a lo largo de la hitoria del Programa "Mi Pieza", es necesario primero descargar el dataset actualizado. El mismo fue obtenido del siguiente enlace de datos abiertos: https://datosabiertos.desarrollosocial.gob.ar/dataset/listado-de-participantes-de-los-sorteos-mi-pieza/resource/bb4d6278-b696-4dc5-a5e5-4c5bd08f5301. 
+### Análisis de balance entre cantidad de hogares en BP por provincia, cantidad de inscriptas y cantidad de seleccionadas
+
+Antes de continuar, será necesario contestar la pregunta acerca del balance entre la cantidad de hogares en BP por provincia, la cantidad de inscriptas en el sorteo de Mi Pieza y la cantidad que resultaron seleccionadas en cada una de ellas. Para esto,  descargaremos el dataset actualizado del siguiente enlace de datos abiertos: https://datosabiertos.desarrollosocial.gob.ar/dataset/listado-de-participantes-de-los-sorteos-mi-pieza/resource/bb4d6278-b696-4dc5-a5e5-4c5bd08f5301. 
 
 En primer lugar, leeremos en R Studio la base. 
 
@@ -831,6 +831,109 @@ Realizando una rápida exploración, identificamos que la misma tiene 489.425 ob
 - Información sobre el estado de la vivienda (estado de techo, piso y paredes, cantidad ambientes, etc)
 - Información sobre el hogar (cantidad de miembros, presencia de violencia basada en género, etc)
 - Información vinculada al programa (monto solicitado, si salió sorteada y en qué n° se sorteo lo hizo)
+
+En primer lugar, para responder a la pregunta, debemos unificar bases con información disponible. La base a utilizar será "basemipieza_renabap". Crearemos un conjunto de campos que permita identificar el peso de cada provincia dentro del conjunto de inscriptas. A su vez, analizaremos la cantidad de seleccionadas y de no seleccionadas por provincia. 
+
+```{r}
+basemipieza_renabap <- basemipieza_inscriptas %>%
+  group_by(provincia) %>%
+  summarize(
+    inscriptas_totales = n(),
+    inscriptas_porc_prov = round(inscriptas_totales / nrow(basemipieza_inscriptas) * 100,2),
+    seleccionadas_cant = sum(sorteo %in% c(1, 2, 3, 4, 5, 6, 7, 8)),
+    seleccionadas_porc = round(seleccionadas_cant / inscriptas_totales * 100,2),
+    no_seleccionadas_cant = inscriptas_totales - seleccionadas_cant, 
+    no_seleccionadas_porc = round(no_seleccionadas_cant / inscriptas_totales * 100,2))
+
+basemipieza_renabap <- basemipieza_renabap %>%
+  mutate(
+    seleccionadas_porc_prov= round((seleccionadas_cant / sum(seleccionadas_cant)) * 100,2))
+```
+
+Visualicemos rápidamente la información resultante:
+
+```{r}
+basemipieza_renabap %>%
+  paged_table(options(rows.print = 25, columns.print = 4))
+```
+
+Como podemos ver, solo la provincia de Buenos Aires concentra el 51,29% de las mujeres inscriptas. Sin embargo, estos datos en sí mismo no nos permiten responder la pregunta, dado que debemos cruzar estos valores con otros datos del RENABAP. 
+
+Para poder unirlo con "baserenabap_prov", primero debemos convertir las provincias a mayúscula y modificar la forma de denominar a la Ciudad Autónoma de Buenos Aires. 
+
+```{r}
+library(stringi)
+basemipieza_renabap <- basemipieza_renabap %>%
+  mutate(
+    # Quitar acentos y caracteres especiales sin afectar los espacios
+    provincia = gsub("[^a-zA-Z0-9 ]", "", stri_trans_nfkd(provincia)),
+    provincia = toupper(provincia),  # Convertir a mayúsculas
+    provincia = ifelse(provincia == "CIUDAD AUTONOMA DE BUENOS AIRES", "CABA", provincia)
+  )
+```
+
+Ahora sí podemos unir las bases: 
+
+```{r}
+basemipieza_renabap <- basemipieza_renabap %>%
+  right_join(baserenabap_prov, by = "provincia")
+```
+
+Dado que la base permite identificar la cantidad de mujeres y personas no binarias en cada provincia, se considera de valor poder generar este campo adicional que permita estimar el peso de esta población por parte de cada provincia: 
+
+```{r}
+basemipieza_renabap <- basemipieza_renabap %>%
+  mutate(
+    porcentaje_muj_otrx = round(((personas_genero_fem + personas_genero_otrx) / sum(personas_genero_fem + personas_genero_otrx)*100),2),
+    porcentaje_barrios = round(cantidad_barrios / sum(cantidad_barrios) * 100,2),
+    porcentaje_familias = round(cantidad_familias_aproximada / sum(cantidad_familias_aproximada)*100,2))
+```
+
+Habiendo generado este nuevo campo, que se considera más preciso que la propuesta de análisis anterior (analizar la participación de hogares en BP por provincia), procederemos a realizar un gráfico que permita ver para cada provincia el porcentaje de cada uno. Al igual que antes, primero crearemos una base con las variables de interés. 
+
+### CAMBIAR
+```{r}
+# Seleccionar solo las columnas de interés
+basemipieza_renabap_largo <- basemipieza_renabap %>%
+  select(provincia, porcentaje_muj_otrx, inscriptas_porc_prov, seleccionadas_porc_prov) %>%
+  gather(variable, porcentaje, porcentaje_muj_otrx:seleccionadas_porc_prov) %>%
+  rename(name_prov = provincia)
+```
+
+```{r, fig.dim = c(10, 13)} 
+ggplot(basemipieza_renabap_largo, aes(variable, porcentaje, fill = variable)) +
+  geom_col() +
+  geom_text(aes(label = paste0(porcentaje, "%"), 
+                y = porcentaje),
+            hjust = -0.5,
+            size = 2) +  # Agregar etiquetas de texto con los porcentajes
+  coord_flip() +
+  theme_bw() +
+  facet_geo(~ name_prov, grid = argentina_grid2) +
+  scale_y_continuous(expand = c(0, 0)) +
+  labs(title = "Distribución de las variables por provincia",
+       caption = "Fuente: elab. propia con datos RENABAP y Mi Pieza",
+       x = NULL, 
+       y = "Porcentaje") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        strip.text.x = element_text(size = 6),
+        legend.text = element_text(size = 5),  # Ajustar tamaño de texto de la leyenda
+        legend.title = element_text(size = 5)) +  # Ajustar tamaño del título de la leyenda
+  guides(fill = guide_legend(title = "Variable", label.theme = element_text(size = 8)))  # Ajustar tamaño del texto en la guía
+```
+
+Analizando los datos que arroja la base, podemos ver que, en general, la diferencia entre las tres categorías es baja. En caso más extremo, que es Buenos Aires, la diferencia es menor a 2 puntos porcentajes. En base a esta información, se pueden sacar alguans conclusiones preliminares:
+
+- El alcance del Programa fue homogéneo en todo el territorio nacional desde el momento de la inscripción. Si identificáramos porcentajes desbalanceados entre las provincias, podríamos atribuir dicha diferencia a la falta de difusión o la distinta presencia del Estado en cada una de las provincias. Sin embargo, la escasa diferencia entre los valores "porcentaje_muj_otrx" y "inscriptas_porc_prov" refuta esta teoría. 
+- La selección por sorteo fue balanceada también en cada provincia, dado que la diferencia entre las inscriptas de cada provincia y las que resultaron beneficiarias es muy menor. En este sentido, ninguan provincia se encuentra sobrrepresentada. 
+
+Ahora visualizaremos estas diferencias en un gráfico de barras para tener datos más específicos. 
+
+## Continuar acá
+
+### Análisis de la cantidad de inscriptas y sorteadas por provincia
 
 Dado que lo que nos importa es obtener información agregada por provincia, procederemos a editar la base para hacerla comparable a la que ya tenemos de las encuestadas. Para ello, las agruparemos por provincia y eliminaremos aquellos valores que en "sorteo" tienen un valor vacío, lo que indica que no fueron seleccionadas para recibir el beneficio. Además, luego agregaremos una columna con el porcentaje de cada provincia sobre el total. 
 
@@ -868,7 +971,8 @@ basemipieza_seleccionadas_prov <- basemipieza_seleccionadas_prov %>%
   mutate(
     # Quitar acentos y caracteres especiales sin afectar los espacios
     provincia = gsub("[^a-zA-Z0-9 ]", "", stri_trans_nfkd(provincia)),
-    provincia = toupper(provincia)  # Convertir a mayúsculas
+    provincia = toupper(provincia),  # Convertir a mayúsculas
+    provincia = ifelse(provincia == "CIUDAD AUTONOMA DE BUENOS AIRES", "CABA", provincia)
   )
 ```
 
@@ -1042,8 +1146,17 @@ girafe(ggobj = plot_grid(plotlist=list(graf_diferencia_sel, mapa_mipieza_plot_in
        options = list(
          opts_hover_inv(css = "fill:#bae0fc;stroke:#00628d;r:5pt;")))
 ```
+Como podemos observar, el valor extremo responde a la provincia de La Pampa. Sin embargo, esta es la provincia con menos incidencia respecto de la cantidad de viviendas en BP a nivel país, por lo que la diferencia entre las variables analizadas resulta alta (200%), pero se la atribuye a la sensibilidad a padecer valores extremos que presenta esta provincia dada su poca participación. 
 
-#### Sacar La Pampa porque genera un valor extremo que distorsiona. 
+## Conclusiones
+
+A continuación, se buscará responder brevemente a cada pregunta formulada al inicio del ejercicio: 
+
+- **¿Hay un balance entre la cantidad de hogares en barrios populares por provincia y la cantidad de sorteadas en cada una?** 
+- **¿Existe un balance entre la cantidad de mujeres de la muestra en Mi Pieza y la cantidad de hogares que residen en barrios populares por provincia?** 
+- **¿Existe un balance entre la cantidad de mujeres de la muestra en Mi Pieza y la cantidad de mujeres que salieron sorteadas por provincia?**
+
+
 
 
 
