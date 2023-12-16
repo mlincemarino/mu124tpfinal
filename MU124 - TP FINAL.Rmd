@@ -1,7 +1,7 @@
 ---
 title: "Instrumentos de Análisis Urbano II - Trabajo Práctico Final"
 author: "Matías Lince Marino"
-date: "2023-11-26"
+date: "2023-12-16"
 output: 
   html_document:
     toc: true
@@ -1197,4 +1197,31 @@ print(paste("Número de observaciones con diferencias menores a 1 punto porcentu
 ```
 
 **En función de los análisis anteriores, y tomando como análisis más exacto al último, es posible concluir que la muestra analizada resultó balanceada y representativa**. El promedio de la diferencia absoluta entre las variables de interés (porcentaje de encuestadas por provincia y porcentaje de seleccionadas / sorteadas por provincia) es de tan solo 0,84 pp. Además, 18 provincias se encuentran por debajo de la diferencia de 1pp. 
+
+## Anexo
+
+### Obstáculos y desafíos enfrentados durante la implementación
+
+A continuación se enumeran algunos desafíos enfrentados durante la implementación:
+
+- **Uso de múltiples bases de datos**. Utilizar bases de distintas procedencias resulta interesante en términos de contribuciones y en cuanto a la ampliación de la información disponible para responder preguntas, pero plantea desafíos vinculados a la estandarización de la denominación de algunos campos. El tiempo invertido en resolver estas diferencias no es menor y conlleva un nivel de detalle y control importante, dado que hay que ir siguiendo la secuencia a lo largo del desarrollo de los chunks para evitar errores en los códigos. Ejemplo: si en un primer momento el campo se llama "name_prov", y luego se lo modificó a "provincia", hay que tener un control riguroso del código a partir del cual cualquier nueva utilización de ese campo debe ser con "provincia". 
+
+- **Herramientas de visualización**. Las herramientas de visualización son muy potentes por su poder de comunicación y la capacidad que presentan de sintetizar información valiosa. Sin embargo, a lo largo del desarrollo del ejercicio se identificaron desafíos vinculados a la edición de sus variables para generar la mejor visualización posible. Muchas veces la edición fue engorrosa, debido a que en la previsualización que brinda R Studio previo al Knit / HTML no permitía identificar los cambios. Esto devino en la necesidad de hacer correr el modelo a través de un KNIT en reiteradas oportunidades. 
+
+- **Archivos generados durante el desarrollo del ejercicio**. Debido a los requerimientos específicos de varias herramientas utilizadas en el desarrollo del ejercicio, se debió generar una cantidad grande de bases de datos. Por poner solo un ejemplo, para la utilización del geofacet se debió crear una base específica para cada uno de ellos. Además, en el volumen de bases y variables utilizadas, se perdió algo de control y estandarización en la forma de denominar los campos creados. Por ejemplo, se intentó siempre mantener un criterio que permitira identificar fácilmente los campos y la información que contienen, y en determinados momentos se invirtió esa lógica (de "porcentaje_variale" se pasó a "variable_porc"). 
+
+- **Foco en el análisis**. Dado que el ejercicio planteó la oportunidad de aprender a usar por primera vez muchas herramientas y funciones, gran parte del tiempo y energía se destino a esto, en detrimento de cierta profundidad de análisis técnico y econométrico de la información. 
+
+### Aprendizajes y oportunidades de mejora
+
+Mencionados los principales obstáculos y desafíos, se hace hincapié en que, en tanto primer ejercicio de desarrollo extenso, presentó la oportunidad de tener múltiples instancias de "prueba y error" que brindan múltiples oportunidades de mejora para futuros trabajos. Ejemplos de esto son: 
+
+- Tener mayor control de las variables a utilizar y de su forma de denominación e identificación para evitar perder el criterio en el transcurso del ejercicio. 
+
+- Utilizar como base las herramientas de visualización generadas, entendiendo que muchas veces se pretenderá solamente editar los campos de información y no sus aspectos de visualización. 
+
+- Destinar mayor tiempo al análisis de la información que al aprendizaje sobre el funcionamiento de herramientas y funciones nuevas. 
+
+- Por último, un aprendizaje importante está vinculado a la forma de trabajo con la que me sentí más cómodo. Se prefieren jornadas intesas y largas antes que pequeños períodos de trabajo, en lo que se pierde algo de foco, a la vez que cuesta retomar el hilo y la lógica con la que se realizaron los códigos, las formas de denominar los campos, etc. 
+
 
