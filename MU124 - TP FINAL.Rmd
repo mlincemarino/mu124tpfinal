@@ -1216,12 +1216,12 @@ A continuación se enumeran algunos desafíos enfrentados durante la implementac
 
 Mencionados los principales obstáculos y desafíos, se hace hincapié en que, en tanto primer ejercicio de desarrollo extenso, presentó la oportunidad de tener múltiples instancias de "prueba y error" que brindan múltiples oportunidades de mejora para futuros trabajos. Ejemplos de esto son: 
 
-- Tener mayor control de las variables a utilizar y de su forma de denominación e identificación para evitar perder el criterio en el transcurso del ejercicio. 
+- **Mayor control de variables y estandarización de nomenclaturas**. Tener mayor control de las variables a utilizar y de su forma de denominación e identificación (nomenclaturas) para evitar perder el criterio en el transcurso del ejercicio. Una buena práctica puede ser tener un documento paralelo en donde se tome nota de las reglas utilizadas para denominar los archivos, a la vez que un registro de las variables más relevantes a controlar. 
 
-- Utilizar como base las herramientas de visualización generadas, entendiendo que muchas veces se pretenderá solamente editar los campos de información y no sus aspectos de visualización. 
+- **Uso de herramientas ya generadas**. Utilizar como base las herramientas de visualización generadas, entendiendo que muchas veces se pretenderá solamente editar los campos de información y no sus aspectos de visualización. 
 
-- Destinar mayor tiempo al análisis de la información que al aprendizaje sobre el funcionamiento de herramientas y funciones nuevas. 
+- **Mayor análisis de la infromación**. Destinar mayor tiempo al análisis de la información que al aprendizaje sobre el funcionamiento de herramientas y funciones nuevas. 
 
-- Por último, un aprendizaje importante está vinculado a la forma de trabajo con la que me sentí más cómodo. Se prefieren jornadas intesas y largas antes que pequeños períodos de trabajo, en lo que se pierde algo de foco, a la vez que cuesta retomar el hilo y la lógica con la que se realizaron los códigos, las formas de denominar los campos, etc. 
+- **Modalidad de trabajo: jornadas extensas e intensivas**. Por último, un aprendizaje importante está vinculado a la forma de trabajo con la que me sentí más cómodo. Se prefieren jornadas intesas y largas antes que pequeños períodos de trabajo, en lo que se pierde algo de foco, a la vez que cuesta retomar el hilo y la lógica con la que se realizaron los códigos, las formas de denominar los campos, etc. 
 
 
